@@ -38,3 +38,13 @@ out/
 
 ### Kotlin ###
 .kotlin
+
+### macOS ###
+# General
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# .yml .properties
+*.yml
+*.properties
