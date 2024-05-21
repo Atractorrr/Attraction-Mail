@@ -48,3 +48,6 @@ out/
 # .yml .properties
 *.yml
 *.properties
+
+*.json
+*.sql
