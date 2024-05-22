@@ -1,4 +1,4 @@
-package attraction.run.gmail
+package attraction.run.batch
 
 import lombok.RequiredArgsConstructor
 import org.springframework.batch.core.Job
@@ -14,7 +14,7 @@ import java.time.OffsetDateTime
 @EnableScheduling
 @Component
 @RequiredArgsConstructor
-class MyScheduler(
+class MailReadScheduler(
     val jobLauncher: JobLauncher,
     val job: Job
 ) {
