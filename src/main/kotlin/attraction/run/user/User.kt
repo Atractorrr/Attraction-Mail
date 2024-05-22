@@ -1,9 +1,9 @@
-package attraction.run.gmail
+package attraction.run.user
 
 import jakarta.persistence.*
 
 @Entity
-class Member(
+class User(
         @Id
         @GeneratedValue(strategy = GenerationType.IDENTITY)
         val id: Long? = null,
@@ -13,6 +13,4 @@ class Member(
         var name: String,
         @Column
         var refreshToken: String
-) {
-
-}
+)
