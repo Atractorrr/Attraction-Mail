@@ -27,7 +27,7 @@ class Article(
     @Column(nullable = false)
     lateinit var contentUrl: String
     @Column(nullable = false)
-    lateinit var readingTime: String
+    var readingTime: Int? = null
     @Column(nullable = false)
     lateinit var contentSummary: String
     @Column(nullable = false)
