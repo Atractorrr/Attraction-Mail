@@ -2,6 +2,7 @@ package attraction.run.batch
 
 import attraction.run.article.Article
 import attraction.run.gmail.GmailReader
+import attraction.run.html.HTMLHandler
 import attraction.run.user.User
 import jakarta.persistence.EntityManagerFactory
 import org.springframework.batch.core.Job
@@ -15,17 +16,18 @@ import org.springframework.batch.item.ItemProcessor
 import org.springframework.batch.item.ItemWriter
 import org.springframework.batch.item.database.JpaPagingItemReader
 import org.springframework.batch.item.database.builder.JpaPagingItemReaderBuilder
+import org.springframework.batch.item.support.CompositeItemProcessor
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.transaction.PlatformTransactionManager
 
+const val CHUNK_SIZE = 100
+
 @Configuration
 class MyBatchConfig(
         private val entityManagerFactory: EntityManagerFactory,
 ): DefaultBatchConfiguration() {
-    companion object { const val chuckSize = 100 }
-
     @Bean
     fun myJob(jobRepository: JobRepository, step: Step): Job {
         return JobBuilder("mailJob", jobRepository)
@@ -36,11 +38,11 @@ class MyBatchConfig(
     @Bean
     fun myStep(jobRepository: JobRepository, transactionManager: PlatformTransactionManager, entityManagerFactory: EntityManagerFactory): Step {
         return StepBuilder("mailStep", jobRepository)
-                .chunk<User, List<Article>>(chuckSize, transactionManager)
+                .chunk<User, List<Article>>(CHUNK_SIZE, transactionManager)
                 // chunk 단위만큼 데이터가 쌓이면 writer에 전달하고, writer는 저장
                 // 마지막 chunk에서는 사이즈 만큼 안채워져도 실행됨
                 .reader(reader(null))
-                .processor(mailReadProcessor(null))
+                .processor(mailCompositeProcessor(null))
                 .writer(writer(null))
                 .build()
     }
@@ -52,16 +54,31 @@ class MyBatchConfig(
         return JpaPagingItemReaderBuilder<User>()
                 .name("reader")
                 .entityManagerFactory(entityManagerFactory)
-                .pageSize(chuckSize)
+                .pageSize(CHUNK_SIZE)
                 .queryString("SELECT u FROM User u")
                 .build()
     }
 
     @Bean
     @StepScope
-    fun mailReadProcessor(@Value("#{jobParameters[requestDate]}") requestDate: String?): ItemProcessor <User, List<Article>> {
+    fun mailCompositeProcessor(@Value("#{jobParameters[requestDate]}") requestDate: String?): CompositeItemProcessor<User, List<Article>> {
         println("==> processor: $requestDate")
+        val delegates = listOf(mailBoxProcessor(), mailContentProcessor())
+
+        val processor = CompositeItemProcessor<User, List<Article>>()
+        processor.setDelegates(delegates)
+
+        return processor
+    }
+
+    @Bean
+    fun mailBoxProcessor(): ItemProcessor <User, List<Article>> {
         return ItemProcessor<User, List<Article>> (GmailReader::getMemberInboxArticle)
+    }
+
+    @Bean
+    fun mailContentProcessor(): ItemProcessor <List<Article>, List<Article>> {
+        return ItemProcessor<List<Article>, List<Article>> (HTMLHandler::extractArticleFromHtmlContent)
     }
 
     @Bean
@@ -69,8 +86,17 @@ class MyBatchConfig(
     fun writer(@Value("#{jobParameters[requestDate]}") requestDate: String?): ItemWriter<List<Article>> {
         println("==> writer: $requestDate")
         return ItemWriter<List<Article>> { items ->
-            for (item in items) {
-                println("items: $item")
+            for (articles in items) {
+                articles.forEach {
+                    println("""
+                        contentSummary = ${it.contentSummary} 
+                        readingTime = ${it.readingTime!!} 
+                        thumbUrl = ${it.thumbnailUrl}
+                        newsLetterEmail = ${it.newsLetterEmail}
+                        userEmail = ${it.userEmail}
+                        receivedAt = ${it.receivedAt}
+                    """.trimIndent())
+                }
             }
         }
     }
