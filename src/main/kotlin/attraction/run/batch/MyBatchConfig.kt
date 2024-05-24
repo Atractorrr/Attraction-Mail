@@ -3,8 +3,10 @@ package attraction.run.batch
 import attraction.run.article.Article
 import attraction.run.gmail.GmailReader
 import attraction.run.html.HTMLHandler
+import attraction.run.s3.S3Service
 import attraction.run.user.User
 import jakarta.persistence.EntityManagerFactory
+import lombok.RequiredArgsConstructor
 import org.springframework.batch.core.Job
 import org.springframework.batch.core.Step
 import org.springframework.batch.core.configuration.annotation.StepScope
@@ -17,6 +19,7 @@ import org.springframework.batch.item.ItemWriter
 import org.springframework.batch.item.database.JpaPagingItemReader
 import org.springframework.batch.item.database.builder.JpaPagingItemReaderBuilder
 import org.springframework.batch.item.support.CompositeItemProcessor
+import org.springframework.batch.item.support.CompositeItemWriter
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -25,8 +28,10 @@ import org.springframework.transaction.PlatformTransactionManager
 const val CHUNK_SIZE = 100
 
 @Configuration
+@RequiredArgsConstructor
 class MyBatchConfig(
         private val entityManagerFactory: EntityManagerFactory,
+        private val s3Service: S3Service
 ): DefaultBatchConfiguration() {
     @Bean
     fun myJob(jobRepository: JobRepository, step: Step): Job {
@@ -43,7 +48,7 @@ class MyBatchConfig(
                 // 마지막 chunk에서는 사이즈 만큼 안채워져도 실행됨
                 .reader(reader(null))
                 .processor(mailCompositeProcessor(null))
-                .writer(writer(null))
+                .writer(compositeWriter(null))
                 .build()
     }
 
@@ -83,8 +88,26 @@ class MyBatchConfig(
 
     @Bean
     @StepScope
-    fun writer(@Value("#{jobParameters[requestDate]}") requestDate: String?): ItemWriter<List<Article>> {
+    fun compositeWriter(@Value("#{jobParameters[requestDate]}") requestDate: String?): CompositeItemWriter<List<Article>> {
         println("==> writer: $requestDate")
+        val delegates = listOf(s3FileWrite(), itemWrite())
+
+        val writer = CompositeItemWriter<List<Article>>()
+        writer.setDelegates(delegates)
+
+        return writer
+    }
+
+    @Bean
+    fun s3FileWrite(): ItemWriter<List<Article>> {
+        return ItemWriter<List<Article>> { items ->
+            s3Service.initFilePath()
+            items.forEach(s3Service::upload)
+        }
+    }
+
+    @Bean
+    fun itemWrite(): ItemWriter<List<Article>> {
         return ItemWriter<List<Article>> { items ->
             for (articles in items) {
                 articles.forEach {
@@ -95,6 +118,7 @@ class MyBatchConfig(
                         newsLetterEmail = ${it.newsLetterEmail}
                         userEmail = ${it.userEmail}
                         receivedAt = ${it.receivedAt}
+                        contentUrl = ${it.contentUrl}
                     """.trimIndent())
                 }
             }

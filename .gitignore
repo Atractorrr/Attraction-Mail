@@ -51,3 +51,6 @@ out/
 
 *.json
 *.sql
+
+# mailbox
+mailbox/

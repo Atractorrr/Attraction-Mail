@@ -37,9 +37,13 @@ dependencies {
     implementation ("mysql:mysql-connector-java:8.0.33")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 
+    // file to multipart
+    implementation("commons-fileupload:commons-fileupload:1.5")
+    implementation("commons-io:commons-io:2.11.0")
+    // aws s3
+    implementation ("io.awspring.cloud:spring-cloud-aws-starter-s3:3.1.1")
     // jsoup
     implementation("org.jsoup:jsoup:1.17.2")
-
     // gmail
     implementation ("com.google.api-client:google-api-client:2.0.0")
     implementation ("com.google.oauth-client:google-oauth-client-jetty:1.34.1")
