@@ -112,9 +112,11 @@ object GmailReader {
         val data = messageDetails.payload.body.data
         val contentHTML = String(Base64.decodeBase64(data), StandardCharsets.UTF_8)
 
+        val newsletter = Newsletter(requireNotNull(associate["From"]) { "뉴스레터 정보가 존재하지 않습니다." })
         return Article(
                 title = requireNotNull(associate["Subject"]) { "제목이 존재하지 않습니다." },
-                newsLetterEmail = requireNotNull(associate["From"]?.extractEmailFromString()) { "뉴스레터 이메일 형식이 올바르지 않습니다." },
+                newsletterEmail = newsletter.email,
+                newsletterNickname = newsletter.nickname,
                 userEmail = requireNotNull(associate["To"]?.extractEmailFromString()) { "사용자 이메일 형식이 올바르지 않습니다." },
                 contentHTML = contentHTML,
                 receivedAt = requireNotNull(associate["Date"]?.toLocalDateFromMailSendDate()) { "전송한 날짜가 올바르지 않습니다." }

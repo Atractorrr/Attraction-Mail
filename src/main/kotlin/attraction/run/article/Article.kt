@@ -16,7 +16,9 @@ class Article(
         @Column(nullable = false)
         val title: String,
         @Column(nullable = false)
-        val newsLetterEmail: String,
+        val newsletterEmail: String,
+        @Column(nullable = false)
+        val newsletterNickname: String,
         @Column(nullable = false)
         val userEmail: String,
         @Transient
