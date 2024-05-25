@@ -1,10 +1,14 @@
 package attraction.run.article
 
 import jakarta.persistence.*
+import org.springframework.data.annotation.CreatedDate
+import org.springframework.data.jpa.domain.support.AuditingEntityListener
 import java.time.LocalDate
+import java.time.LocalDateTime
 import kotlin.jvm.Transient
 
 @Entity
+@EntityListeners(AuditingEntityListener::class)
 class Article(
         @Id
         @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -12,7 +16,9 @@ class Article(
         @Column(nullable = false)
         val title: String,
         @Column(nullable = false)
-        val newsLetterEmail: String,
+        val newsletterEmail: String,
+        @Column(nullable = false)
+        val newsletterNickname: String,
         @Column(nullable = false)
         val userEmail: String,
         @Transient
@@ -30,13 +36,10 @@ class Article(
     var readingTime: Int? = null
     @Column(nullable = false)
     lateinit var contentSummary: String
-    @Column(nullable = false)
-    lateinit var createdAt: LocalDate
+
+    @CreatedDate
+    @Column(nullable = false, updatable = false)
+    var createdAt: LocalDateTime = LocalDateTime.now()
 
     fun isSameUserEmail(userEmail: String) = this.userEmail == userEmail
-    override fun toString(): String {
-        return "Article(id=$id, title='$title', newsLetterEmail='$newsLetterEmail', userEmail='$userEmail', contentHTML='$contentHTML', receivedAt=$receivedAt)"
-    }
-
-
 }
