@@ -16,6 +16,7 @@ import org.springframework.batch.core.repository.JobRepository
 import org.springframework.batch.core.step.builder.StepBuilder
 import org.springframework.batch.item.ItemProcessor
 import org.springframework.batch.item.ItemWriter
+import org.springframework.batch.item.database.JpaItemWriter
 import org.springframework.batch.item.database.JpaPagingItemReader
 import org.springframework.batch.item.database.builder.JpaPagingItemReaderBuilder
 import org.springframework.batch.item.support.CompositeItemProcessor
@@ -32,7 +33,7 @@ const val CHUNK_SIZE = 100
 class MyBatchConfig(
         private val entityManagerFactory: EntityManagerFactory,
         private val s3Service: S3Service
-): DefaultBatchConfiguration() {
+) : DefaultBatchConfiguration() {
     @Bean
     fun myJob(jobRepository: JobRepository, step: Step): Job {
         return JobBuilder("mailJob", jobRepository)
@@ -77,20 +78,20 @@ class MyBatchConfig(
     }
 
     @Bean
-    fun mailBoxProcessor(): ItemProcessor <User, List<Article>> {
-        return ItemProcessor<User, List<Article>> (GmailReader::getMemberInboxArticle)
+    fun mailBoxProcessor(): ItemProcessor<User, List<Article>> {
+        return ItemProcessor<User, List<Article>>(GmailReader::getMemberInboxArticle)
     }
 
     @Bean
-    fun mailContentProcessor(): ItemProcessor <List<Article>, List<Article>> {
-        return ItemProcessor<List<Article>, List<Article>> (HTMLHandler::extractArticleFromHtmlContent)
+    fun mailContentProcessor(): ItemProcessor<List<Article>, List<Article>> {
+        return ItemProcessor<List<Article>, List<Article>>(HTMLHandler::extractArticleFromHtmlContent)
     }
 
     @Bean
     @StepScope
     fun compositeWriter(@Value("#{jobParameters[requestDate]}") requestDate: String?): CompositeItemWriter<List<Article>> {
         println("==> writer: $requestDate")
-        val delegates = listOf(s3FileWrite(), itemWrite())
+        val delegates = listOf(s3FileWrite(), jpaItemListWriter())
 
         val writer = CompositeItemWriter<List<Article>>()
         writer.setDelegates(delegates)
@@ -107,21 +108,12 @@ class MyBatchConfig(
     }
 
     @Bean
-    fun itemWrite(): ItemWriter<List<Article>> {
-        return ItemWriter<List<Article>> { items ->
-            for (articles in items) {
-                articles.forEach {
-                    println("""
-                        contentSummary = ${it.contentSummary} 
-                        readingTime = ${it.readingTime!!} 
-                        thumbUrl = ${it.thumbnailUrl}
-                        newsLetterEmail = ${it.newsLetterEmail}
-                        userEmail = ${it.userEmail}
-                        receivedAt = ${it.receivedAt}
-                        contentUrl = ${it.contentUrl}
-                    """.trimIndent())
-                }
-            }
+    fun jpaItemListWriter(): JpaItemListWriter<Article> {
+        val jpaItemWriter = JpaItemWriter<Article>()
+        jpaItemWriter.setEntityManagerFactory(entityManagerFactory)
+
+        return JpaItemListWriter(jpaItemWriter).apply {
+            setEntityManagerFactory(entityManagerFactory)
         }
     }
 
