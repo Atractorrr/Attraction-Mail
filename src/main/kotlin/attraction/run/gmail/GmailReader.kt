@@ -103,6 +103,8 @@ class GmailReader(
 
             createArticle(messageDetails).takeIf { it.isSameUserEmail(user.email) }
                     ?: throw IllegalArgumentException("사용자 이메일 정보가 올바르지 않습니다.")
+        }.apply {
+            removeUnReadLabel(messageIds, gmailService)
         }
     }
 
@@ -141,6 +143,13 @@ class GmailReader(
         val formatter = DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss Z", Locale.ENGLISH)
         val zonedDateTime = ZonedDateTime.parse(this, formatter)
         return zonedDateTime.toLocalDate()
+    }
+
+    private fun removeUnReadLabel(messageIds: List<String>, gmailService: Gmail) {
+        val mods = ModifyMessageRequest().setRemoveLabelIds(listOf("UNREAD"))
+        messageIds.forEach {
+            gmailService.users().messages().modify("me", it, mods).execute()
+        }
     }
 }
 
