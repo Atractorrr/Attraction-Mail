@@ -12,5 +12,9 @@ class User(
         @Column
         var name: String,
         @Column
-        var refreshToken: String
+        var refreshToken: String,
+        @Column(nullable = false, columnDefinition = "TINYINT(1) default 0")
+        var isDeleted: Boolean = false,
+        @Column(nullable = false, columnDefinition = "TINYINT(1) default 0")
+        var shouldReissueToken: Boolean = false
 )

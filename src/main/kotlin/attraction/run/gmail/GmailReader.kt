@@ -1,7 +1,9 @@
 package attraction.run.gmail
 
 import attraction.run.article.Article
+import attraction.run.user.CannotAccessGmailException
 import attraction.run.user.User
+import attraction.run.user.UserMarkService
 import com.google.api.client.auth.oauth2.BearerToken
 import com.google.api.client.auth.oauth2.Credential
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets
@@ -16,6 +18,7 @@ import com.google.api.services.gmail.model.Label
 import com.google.api.services.gmail.model.ListLabelsResponse
 import com.google.api.services.gmail.model.Message
 import org.apache.commons.codec.binary.Base64
+import org.springframework.stereotype.Component
 import java.io.FileNotFoundException
 import java.io.InputStreamReader
 import java.nio.charset.StandardCharsets
@@ -24,24 +27,31 @@ import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.*
 
-object GmailReader {
-
-    private const val APPLICATION_NAME = "attraction"
-    private val JSON_FACTORY: JsonFactory = GsonFactory.getDefaultInstance()
-    private const val CREDENTIALS_FILE_PATH = "/credentials.json"
+@Component
+class GmailReader(
+        private val userMarkService: UserMarkService
+) {
+    private companion object {
+        private const val APPLICATION_NAME = "attraction"
+        private val JSON_FACTORY: JsonFactory = GsonFactory.getDefaultInstance()
+        private const val CREDENTIALS_FILE_PATH = "/credentials.json"
+    }
 
     fun getMemberInboxArticle(user: User): List<Article> {
         val httpTransport: NetHttpTransport = GoogleNetHttpTransport.newTrustedTransport()
         val loadClientSecrets: GoogleClientSecrets = loadClientSecrets()
 
-        val googleTokenResponse: GoogleTokenResponse = getGoogleTokenResponse(
-                httpTransport,
-                user.refreshToken,
-                loadClientSecrets.details
-        )
+        val credentialResult = runCatching {
+            getGoogleTokenResponse(httpTransport, user.refreshToken, loadClientSecrets.details)
+        }.map {
+            Credential(BearerToken.authorizationHeaderAccessMethod()).apply {
+                accessToken = it.accessToken
+            }
+        }.onFailure {
+            userMarkService.markTokenForReissue(user)
+        }
 
-        val credential: Credential = Credential(BearerToken.authorizationHeaderAccessMethod())
-                .setAccessToken(googleTokenResponse.accessToken)
+        val credential = credentialResult.getOrElse { throw CannotAccessGmailException("${user.email} 사용자의 메일함에 접근할 수 없습니다.") }
 
         val gmailService = getGmailService(httpTransport, credential)
         return getMemberMessagesContent(gmailService, user)
