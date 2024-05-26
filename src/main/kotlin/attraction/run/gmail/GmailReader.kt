@@ -17,8 +17,12 @@ import com.google.api.services.gmail.Gmail
 import com.google.api.services.gmail.model.Label
 import com.google.api.services.gmail.model.ListLabelsResponse
 import com.google.api.services.gmail.model.Message
+import com.google.api.services.gmail.model.ModifyMessageRequest
 import org.apache.commons.codec.binary.Base64
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
+import org.springframework.util.MimeTypeUtils
+import org.springframework.util.MimeTypeUtils.TEXT_HTML_VALUE
 import java.io.FileNotFoundException
 import java.io.InputStreamReader
 import java.nio.charset.StandardCharsets
@@ -31,6 +35,8 @@ import java.util.*
 class GmailReader(
         private val userMarkService: UserMarkService
 ) {
+    private val log = LoggerFactory.getLogger(this.javaClass)!!
+
     private companion object {
         private const val APPLICATION_NAME = "attraction"
         private val JSON_FACTORY: JsonFactory = GsonFactory.getDefaultInstance()
@@ -89,6 +95,8 @@ class GmailReader(
 
     private fun getMemberMessagesContent(gmailService: Gmail, user: User): List<Article> {
         val messages = getMessages(gmailService, user)
+        val messageIds = messages.map { it.id }
+        log.info("사용자: ${user.email} message ids: $messageIds")
 
         return messages.map { message ->
             val messageDetails = gmailService.users().messages().get("me", message.id).setFormat("full").execute()
@@ -100,19 +108,9 @@ class GmailReader(
 
     private fun getMessages(gmailService: Gmail, user: User): MutableList<Message> {
         return gmailService.users().messages().list("me")
-                .setLabelIds(getLabelIds(gmailService))
-                .setQ("is:unread")
+                .setQ("label:attraction is:unread")
                 .execute()
                 .messages ?: throw MailNotFoundException("${user.email} 사용자의 메일이 존재하지 않습니다.")
-    }
-
-    private fun getLabelIds(gmailService: Gmail): List<String> {
-        val labelsResponse: ListLabelsResponse = gmailService.users().labels().list("me").execute()
-
-        return labelsResponse.labels.stream()
-                .filter { it.name.equals(APPLICATION_NAME) }
-                .map(Label::getId)
-                .toList()
     }
 
     private fun createArticle(messageDetails: Message): Article {
