@@ -7,6 +7,7 @@ import attraction.run.s3.S3Service
 import attraction.run.user.User
 import jakarta.persistence.EntityManagerFactory
 import lombok.RequiredArgsConstructor
+import org.slf4j.LoggerFactory
 import org.springframework.batch.core.Job
 import org.springframework.batch.core.Step
 import org.springframework.batch.core.configuration.annotation.StepScope
@@ -30,24 +31,26 @@ const val CHUNK_SIZE = 100
 
 @Configuration
 @RequiredArgsConstructor
-class MyBatchConfig(
+class BatchConfig(
         private val entityManagerFactory: EntityManagerFactory,
         private val s3Service: S3Service
 ) : DefaultBatchConfiguration() {
+    private val log = LoggerFactory.getLogger(this.javaClass)!!
+
     @Bean
-    fun myJob(jobRepository: JobRepository, step: Step): Job {
+    fun job(jobRepository: JobRepository, step: Step): Job {
         return JobBuilder("mailJob", jobRepository)
                 .start(step)
                 .build()
     }
 
     @Bean
-    fun myStep(jobRepository: JobRepository, transactionManager: PlatformTransactionManager, entityManagerFactory: EntityManagerFactory): Step {
+    fun step(jobRepository: JobRepository, transactionManager: PlatformTransactionManager, entityManagerFactory: EntityManagerFactory): Step {
         return StepBuilder("mailStep", jobRepository)
                 .chunk<User, List<Article>>(CHUNK_SIZE, transactionManager)
                 // chunk 단위만큼 데이터가 쌓이면 writer에 전달하고, writer는 저장
                 // 마지막 chunk에서는 사이즈 만큼 안채워져도 실행됨
-                .reader(reader(null))
+                .reader(userPagingReader(null))
                 .processor(mailCompositeProcessor(null))
                 .writer(compositeWriter(null))
                 .build()
@@ -55,8 +58,8 @@ class MyBatchConfig(
 
     @Bean
     @StepScope // Bean의 생성 시점이 스프링 애플리케이션이 실행되는 시점이 아닌 @JobScope, @StepScope가 명시된 메서드가 실행될 때까지 지연
-    fun reader(@Value("#{jobParameters[requestDate]}") requestDate: String?): JpaPagingItemReader<User> {
-        println("==> reader: $requestDate")
+    fun userPagingReader(@Value("#{jobParameters[requestDate]}") requestDate: String?): JpaPagingItemReader<User> {
+        log.info("==> processor: {}", requestDate)
         return JpaPagingItemReaderBuilder<User>()
                 .name("reader")
                 .entityManagerFactory(entityManagerFactory)
@@ -68,7 +71,7 @@ class MyBatchConfig(
     @Bean
     @StepScope
     fun mailCompositeProcessor(@Value("#{jobParameters[requestDate]}") requestDate: String?): CompositeItemProcessor<User, List<Article>> {
-        println("==> processor: $requestDate")
+        log.info("==> processor: {}", requestDate)
         val delegates = listOf(mailBoxProcessor(), mailContentProcessor())
 
         val processor = CompositeItemProcessor<User, List<Article>>()
@@ -90,8 +93,8 @@ class MyBatchConfig(
     @Bean
     @StepScope
     fun compositeWriter(@Value("#{jobParameters[requestDate]}") requestDate: String?): CompositeItemWriter<List<Article>> {
-        println("==> writer: $requestDate")
-        val delegates = listOf(s3FileWrite(), jpaItemListWriter())
+        log.info("==> writer: {}", requestDate)
+        val delegates = listOf(s3FileWriter(), jpaItemListWriter())
 
         val writer = CompositeItemWriter<List<Article>>()
         writer.setDelegates(delegates)
@@ -100,7 +103,7 @@ class MyBatchConfig(
     }
 
     @Bean
-    fun s3FileWrite(): ItemWriter<List<Article>> {
+    fun s3FileWriter(): ItemWriter<List<Article>> {
         return ItemWriter<List<Article>> { items ->
             s3Service.initFilePath()
             items.forEach(s3Service::upload)
