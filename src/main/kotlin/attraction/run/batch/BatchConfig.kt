@@ -4,6 +4,7 @@ import attraction.run.article.Article
 import attraction.run.gmail.GmailReader
 import attraction.run.html.HTMLHandler
 import attraction.run.s3.S3Service
+import attraction.run.user.CannotAccessGmailException
 import attraction.run.user.User
 import jakarta.persistence.EntityManagerFactory
 import lombok.RequiredArgsConstructor
@@ -33,7 +34,8 @@ const val CHUNK_SIZE = 100
 @RequiredArgsConstructor
 class BatchConfig(
         private val entityManagerFactory: EntityManagerFactory,
-        private val s3Service: S3Service
+        private val s3Service: S3Service,
+        private val gmailReader: GmailReader
 ) : DefaultBatchConfiguration() {
     private val log = LoggerFactory.getLogger(this.javaClass)!!
 
@@ -48,11 +50,12 @@ class BatchConfig(
     fun step(jobRepository: JobRepository, transactionManager: PlatformTransactionManager, entityManagerFactory: EntityManagerFactory): Step {
         return StepBuilder("mailStep", jobRepository)
                 .chunk<User, List<Article>>(CHUNK_SIZE, transactionManager)
-                // chunk 단위만큼 데이터가 쌓이면 writer에 전달하고, writer는 저장
-                // 마지막 chunk에서는 사이즈 만큼 안채워져도 실행됨
                 .reader(userPagingReader(null))
                 .processor(mailCompositeProcessor(null))
                 .writer(compositeWriter(null))
+                .faultTolerant()
+                .skipPolicy(RefreshTokenSkipPolicy())
+                .noRollback(CannotAccessGmailException::class.java)
                 .build()
     }
 
@@ -64,7 +67,12 @@ class BatchConfig(
                 .name("reader")
                 .entityManagerFactory(entityManagerFactory)
                 .pageSize(CHUNK_SIZE)
-                .queryString("SELECT u FROM User u")
+                .queryString("""
+                    SELECT u FROM User u 
+                    WHERE u.shouldReissueToken = false
+                    AND u.isDeleted = false
+                    ORDER BY u.id
+                """.trimIndent())
                 .build()
     }
 
@@ -82,7 +90,7 @@ class BatchConfig(
 
     @Bean
     fun mailBoxProcessor(): ItemProcessor<User, List<Article>> {
-        return ItemProcessor<User, List<Article>>(GmailReader::getMemberInboxArticle)
+        return ItemProcessor<User, List<Article>>(gmailReader::getMemberInboxArticle)
     }
 
     @Bean
