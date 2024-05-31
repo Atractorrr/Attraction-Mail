@@ -1,20 +1,23 @@
 package attraction.run.gmail
 
+import org.slf4j.LoggerFactory
+
 data class Newsletter(private val from: String) {
-    private companion object {
-        @JvmStatic
-        private val NICKNAME_EMAIL_REGEX = "\"([^\"]+)\"\\s*<([^>]+)>".toRegex()
-    }
+
+    private val log = LoggerFactory.getLogger(this.javaClass)!!
 
     val nickname: String
     val email: String
 
     init {
-        val match = NICKNAME_EMAIL_REGEX.find(from)
+        val split = from.trim().split(" ")
 
-        if (match != null) {
-            nickname = match.groupValues[1]
-            email = match.groupValues[2]
-        } else throw IllegalArgumentException("메일의 보낸사람 정보가 올바르지 않습니다.")
+        val fromNickname = split[0]
+        if (fromNickname.startsWith("\"") && fromNickname.endsWith("\"")) {
+            nickname = fromNickname.substring(1, fromNickname.length - 1)
+        } else nickname = fromNickname
+
+        val fromEmail = split[1]
+        email = fromEmail.substring(1, fromEmail.length - 1)
     }
 }

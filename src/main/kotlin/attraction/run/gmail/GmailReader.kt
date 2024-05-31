@@ -1,9 +1,9 @@
 package attraction.run.gmail
 
 import attraction.run.article.Article
-import attraction.run.user.CannotAccessGmailException
-import attraction.run.user.User
-import attraction.run.user.UserMarkService
+import attraction.run.token.CannotAccessGmailException
+import attraction.run.token.GoogleRefreshToken
+import attraction.run.token.GoogleTokenMarkService
 import com.google.api.client.auth.oauth2.BearerToken
 import com.google.api.client.auth.oauth2.Credential
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets
@@ -30,7 +30,7 @@ import java.util.*
 
 @Component
 class GmailReader(
-        private val userMarkService: UserMarkService
+        private val userMarkService: GoogleTokenMarkService
 ) {
     private val log = LoggerFactory.getLogger(this.javaClass)!!
 
@@ -40,24 +40,24 @@ class GmailReader(
         private const val CREDENTIALS_FILE_PATH = "/credentials.json"
     }
 
-    fun getMemberInboxArticle(user: User): List<Article> {
+    fun getMemberInboxArticle(googleToken: GoogleRefreshToken): List<Article> {
         val httpTransport: NetHttpTransport = GoogleNetHttpTransport.newTrustedTransport()
         val loadClientSecrets: GoogleClientSecrets = loadClientSecrets()
 
         val credentialResult = runCatching {
-            getGoogleTokenResponse(httpTransport, user.refreshToken, loadClientSecrets.details)
+            getGoogleTokenResponse(httpTransport, googleToken.token, loadClientSecrets.details)
         }.map {
             Credential(BearerToken.authorizationHeaderAccessMethod()).apply {
                 accessToken = it.accessToken
             }
         }.onFailure {
-            userMarkService.markTokenForReissue(user)
+            userMarkService.markTokenForReissue(googleToken.email)
         }
 
-        val credential = credentialResult.getOrElse { throw CannotAccessGmailException("${user.email} 사용자의 메일함에 접근할 수 없습니다.") }
+        val credential = credentialResult.getOrElse { throw CannotAccessGmailException("${googleToken.email} 사용자의 메일함에 접근할 수 없습니다.") }
 
         val gmailService = getGmailService(httpTransport, credential)
-        return getMemberMessagesContent(gmailService, user)
+        return getMemberMessagesContent(gmailService, googleToken)
     }
 
     private fun loadClientSecrets(): GoogleClientSecrets {
@@ -90,10 +90,10 @@ class GmailReader(
                 .build()
     }
 
-    private fun getMemberMessagesContent(gmailService: Gmail, user: User): List<Article> {
-        val messages = getMessages(gmailService, user)
+    private fun getMemberMessagesContent(gmailService: Gmail, googleToken: GoogleRefreshToken): List<Article> {
+        val messages = getMessages(gmailService, googleToken)
         val messageIds = messages.map { it.id }
-        log.info("사용자: ${user.email} message ids: $messageIds")
+        log.info("사용자: ${googleToken.email} message ids: $messageIds")
 
         return messages.mapNotNull { message ->
             val messageDetails = gmailService.users().messages().get("me", message.id).setFormat("full").execute()
@@ -101,19 +101,19 @@ class GmailReader(
                 return@mapNotNull null
             }
 
-            createArticle(messageDetails).takeIf { it.isSameUserEmail(user.email) }
+            createArticle(messageDetails).takeIf { it.isSameUserEmail(googleToken.email) }
                     ?: throw IllegalArgumentException("사용자 이메일 정보가 올바르지 않습니다.")
         }.also {
             removeUnReadLabel(messageIds, gmailService)
-            if (it.isEmpty()) throw throw MailNotFoundException("${user.email} 사용자의 메일이 존재하지 않습니다.")
+            if (it.isEmpty()) throw throw MailNotFoundException("${googleToken.email} 사용자의 메일이 존재하지 않습니다.")
         }
     }
 
-    private fun getMessages(gmailService: Gmail, user: User): MutableList<Message> {
+    private fun getMessages(gmailService: Gmail, googleToken: GoogleRefreshToken): MutableList<Message> {
         return gmailService.users().messages().list("me")
                 .setQ("label:attraction is:unread")
                 .execute()
-                .messages ?: throw MailNotFoundException("${user.email} 사용자의 메일이 존재하지 않습니다.")
+                .messages ?: throw MailNotFoundException("${googleToken.email} 사용자의 메일이 존재하지 않습니다.")
     }
 
     private fun createArticle(messageDetails: Message): Article {

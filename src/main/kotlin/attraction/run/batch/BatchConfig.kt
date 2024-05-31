@@ -4,8 +4,8 @@ import attraction.run.article.Article
 import attraction.run.gmail.GmailReader
 import attraction.run.html.HTMLHandler
 import attraction.run.s3.S3Service
-import attraction.run.user.CannotAccessGmailException
-import attraction.run.user.User
+import attraction.run.token.CannotAccessGmailException
+import attraction.run.token.GoogleRefreshToken
 import jakarta.persistence.EntityManagerFactory
 import lombok.RequiredArgsConstructor
 import org.slf4j.LoggerFactory
@@ -49,7 +49,7 @@ class BatchConfig(
     @Bean
     fun step(jobRepository: JobRepository, transactionManager: PlatformTransactionManager, entityManagerFactory: EntityManagerFactory): Step {
         return StepBuilder("mailStep", jobRepository)
-                .chunk<User, List<Article>>(CHUNK_SIZE, transactionManager)
+                .chunk<GoogleRefreshToken, List<Article>>(CHUNK_SIZE, transactionManager)
                 .reader(userPagingReader(null))
                 .processor(mailCompositeProcessor(null))
                 .writer(compositeWriter(null))
@@ -61,36 +61,35 @@ class BatchConfig(
 
     @Bean
     @StepScope // Bean의 생성 시점이 스프링 애플리케이션이 실행되는 시점이 아닌 @JobScope, @StepScope가 명시된 메서드가 실행될 때까지 지연
-    fun userPagingReader(@Value("#{jobParameters[requestDate]}") requestDate: String?): JpaPagingItemReader<User> {
+    fun userPagingReader(@Value("#{jobParameters[requestDate]}") requestDate: String?): JpaPagingItemReader<GoogleRefreshToken> {
         log.info("==> processor: {}", requestDate)
-        return JpaPagingItemReaderBuilder<User>()
+        return JpaPagingItemReaderBuilder<GoogleRefreshToken>()
                 .name("reader")
                 .entityManagerFactory(entityManagerFactory)
                 .pageSize(CHUNK_SIZE)
                 .queryString("""
-                    SELECT u FROM User u 
-                    WHERE u.shouldReissueToken = false
-                    AND u.isDeleted = false
-                    ORDER BY u.id
+                    SELECT g FROM GoogleRefreshToken g 
+                    WHERE g.shouldReissueToken = false
+                    ORDER BY g.email
                 """.trimIndent())
                 .build()
     }
 
     @Bean
     @StepScope
-    fun mailCompositeProcessor(@Value("#{jobParameters[requestDate]}") requestDate: String?): CompositeItemProcessor<User, List<Article>> {
+    fun mailCompositeProcessor(@Value("#{jobParameters[requestDate]}") requestDate: String?): CompositeItemProcessor<GoogleRefreshToken, List<Article>> {
         log.info("==> processor: {}", requestDate)
         val delegates = listOf(mailBoxProcessor(), mailContentProcessor())
 
-        val processor = CompositeItemProcessor<User, List<Article>>()
+        val processor = CompositeItemProcessor<GoogleRefreshToken, List<Article>>()
         processor.setDelegates(delegates)
 
         return processor
     }
 
     @Bean
-    fun mailBoxProcessor(): ItemProcessor<User, List<Article>> {
-        return ItemProcessor<User, List<Article>>(gmailReader::getMemberInboxArticle)
+    fun mailBoxProcessor(): ItemProcessor<GoogleRefreshToken, List<Article>> {
+        return ItemProcessor<GoogleRefreshToken, List<Article>>(gmailReader::getMemberInboxArticle)
     }
 
     @Bean

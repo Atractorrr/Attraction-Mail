@@ -1,7 +1,7 @@
 package attraction.run.batch
 
 import attraction.run.gmail.MailNotFoundException
-import attraction.run.user.CannotAccessGmailException
+import attraction.run.token.CannotAccessGmailException
 import org.springframework.batch.core.step.skip.SkipPolicy
 
 class RefreshTokenSkipPolicy: SkipPolicy {
