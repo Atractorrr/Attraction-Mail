@@ -9,7 +9,7 @@ import kotlin.jvm.Transient
 
 @Entity
 @EntityListeners(AuditingEntityListener::class)
-class Article(
+class Article (
         @Id
         @GeneratedValue(strategy = GenerationType.IDENTITY)
         val id: Long? = null,
