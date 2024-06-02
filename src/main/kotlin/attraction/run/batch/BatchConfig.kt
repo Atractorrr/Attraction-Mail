@@ -116,7 +116,7 @@ class BatchConfig(
     fun s3FileWriter(): ItemWriter<List<Article>> {
         return ItemWriter<List<Article>> { items ->
             s3Service.initFilePath()
-            items.forEach(s3Service::upload)
+            items.forEach(s3Service::uploadAllArticle)
         }
     }
 

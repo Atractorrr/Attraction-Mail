@@ -38,6 +38,7 @@ class GmailReader(
         private const val APPLICATION_NAME = "attraction"
         private val JSON_FACTORY: JsonFactory = GsonFactory.getDefaultInstance()
         private const val CREDENTIALS_FILE_PATH = "/credentials.json"
+        private val EMAIL_REGEX = "<(.*?)>".toRegex()
     }
 
     fun getMemberInboxArticle(googleToken: GoogleRefreshToken): List<Article> {
@@ -135,8 +136,7 @@ class GmailReader(
     }
 
     private fun String.extractEmailFromString(): String {
-        val emailRegex = "<(.*?)>".toRegex()
-        val matchResult = emailRegex.find(this)
+        val matchResult = EMAIL_REGEX.find(this)
         return matchResult?.groupValues?.get(1) ?: throw IllegalArgumentException("메일의 이메일이 형식이 올바르지 않습니다.")
     }
 
