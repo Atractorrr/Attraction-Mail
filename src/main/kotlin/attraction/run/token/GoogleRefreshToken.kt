@@ -1,4 +1,4 @@
-package attraction.run.token;
+package attraction.run.token
 
 import jakarta.persistence.Column
 import jakarta.persistence.Entity

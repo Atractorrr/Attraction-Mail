@@ -46,9 +46,9 @@ object HTMLHandler {
     private fun extractSummary(fullText: String): String {
         val sentenceDelimiter = ". "
         val startPoint = fullText.indexOf(sentenceDelimiter) + sentenceDelimiter.length
-        val summaryEndPoint = MAX_CONTENT_LENGTH + startPoint + sentenceDelimiter.length
+        val summaryEndPoint = MAX_CONTENT_LENGTH + startPoint + sentenceDelimiter.length - sentenceDelimiter.length
 
-        return fullText.substring(startPoint until summaryEndPoint)
+        return fullText.substring(startPoint until summaryEndPoint).trim()
     }
 
     // 사람은 1분에 약 150 ~ 200단어를 읽을 수 있다. (불용어 제외X)
