@@ -8,10 +8,10 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import kotlin.jvm.Transient
 
-@Table(name = "article")
+@Table(name = "admin_article")
 @Entity
 @EntityListeners(AuditingEntityListener::class)
-class Article (
+class Article(
         @Id
         @GeneratedValue(strategy = GenerationType.IDENTITY)
         val id: Long? = null,
@@ -30,22 +30,38 @@ class Article (
 ) {
     @Column(name = "is_deleted", nullable = false, columnDefinition = "TINYINT(1) default 0")
     val isDeleted = false
+
     @Column(name = "thumbnail_url", nullable = false)
     lateinit var thumbnailUrl: String
+
     @Column(name = "content_url", nullable = false)
     lateinit var contentUrl: String
+
     @Column(name = "reading_time", nullable = false)
     var readingTime: Int? = null
+
     @Column(name = "content_summary", nullable = false, length = 200)
     lateinit var contentSummary: String
 
     @CreatedDate
-    @Column(name = "create_at", nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     var createdAt: LocalDateTime = LocalDateTime.now()
 
     @LastModifiedDate
-    @Column(name = "update_at", nullable = false, updatable = false)
-    var updateAt: LocalDateTime = LocalDateTime.now()
+    @Column(name = "modified_at", nullable = false, updatable = false)
+    var modifiedAt: LocalDateTime = LocalDateTime.now()
 
     fun isSameUserEmail(userEmail: String) = this.userEmail == userEmail
+    override fun toString(): String {
+        return """
+            AdminArticle(
+                title='$title', newsletterEmail='$newsletterEmail', newsletterNickname='$newsletterNickname', 
+                userEmail='$userEmail', receivedAt=$receivedAt, isDeleted=$isDeleted, thumbnailUrl='$thumbnailUrl', 
+                contentUrl='$contentUrl', readingTime=$readingTime, contentSummary='$contentSummary', 
+                createdAt=$createdAt, modifiedAt=$modifiedAt
+            )
+        """.trimIndent()
+    }
+
+
 }
