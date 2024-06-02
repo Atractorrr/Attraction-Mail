@@ -34,12 +34,12 @@ repositories {
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-batch")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
-    implementation ("mysql:mysql-connector-java:8.0.33")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 
-    // file to multipart
-    implementation("commons-fileupload:commons-fileupload:1.5")
-    implementation("commons-io:commons-io:2.11.0")
+    //DB
+    implementation ("mysql:mysql-connector-java:8.0.33")
+    implementation ("org.mariadb.jdbc:mariadb-java-client:2.7.2")
+
     // aws s3
     implementation ("io.awspring.cloud:spring-cloud-aws-starter-s3:3.1.1")
     // jsoup

@@ -11,8 +11,8 @@ import lombok.RequiredArgsConstructor
 import org.slf4j.LoggerFactory
 import org.springframework.batch.core.Job
 import org.springframework.batch.core.Step
+import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing
 import org.springframework.batch.core.configuration.annotation.StepScope
-import org.springframework.batch.core.configuration.support.DefaultBatchConfiguration
 import org.springframework.batch.core.job.builder.JobBuilder
 import org.springframework.batch.core.repository.JobRepository
 import org.springframework.batch.core.step.builder.StepBuilder
@@ -23,6 +23,7 @@ import org.springframework.batch.item.database.JpaPagingItemReader
 import org.springframework.batch.item.database.builder.JpaPagingItemReaderBuilder
 import org.springframework.batch.item.support.CompositeItemProcessor
 import org.springframework.batch.item.support.CompositeItemWriter
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -31,12 +32,14 @@ import org.springframework.transaction.PlatformTransactionManager
 const val CHUNK_SIZE = 100
 
 @Configuration
+@EnableBatchProcessing(dataSourceRef = "defaultDataSource", transactionManagerRef = "serverTransactionManager")
 @RequiredArgsConstructor
 class BatchConfig(
+        @Qualifier("serverEntityManagerFactory")
         private val entityManagerFactory: EntityManagerFactory,
         private val s3Service: S3Service,
         private val gmailReader: GmailReader
-) : DefaultBatchConfiguration() {
+) {
     private val log = LoggerFactory.getLogger(this.javaClass)!!
 
     @Bean
