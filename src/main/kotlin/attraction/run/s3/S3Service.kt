@@ -14,7 +14,7 @@ import java.util.*
 class S3Service(
         @Value("\${aws.s3.bucket}")
         private val bucket: String,
-        @Value("\${file.path}")
+        @Value("\${file.mail-path}")
         private val path: String,
         private val s3Operations: S3Operations
 ) {

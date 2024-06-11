@@ -3,14 +3,15 @@ package attraction.run.html
 import attraction.run.article.Article
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
+import org.springframework.stereotype.Service
+import java.io.File
 
-object HTMLHandler {
-
-    private val EXTENSIONS = listOf(".jpg", ".jpeg", ".png")
-    private const val WORDS_PER_MINUTE = 200
-    private const val MAX_CONTENT_LENGTH = 200
-    private const val THUMBNAIL_IMG_INDEX = 1
-    private const val DEFAULT_IMG_INDEX = 0
+@Service
+class HTMLService(private val thumbnailUrlParser: ThumbnailUrlParser) {
+    private companion object {
+        private const val WORDS_PER_MINUTE = 200
+        private const val MAX_CONTENT_LENGTH = 200
+    }
 
     fun extractArticleFromHtmlContent(articles: List<Article>): List<Article> {
         return articles.map { article ->
@@ -27,17 +28,8 @@ object HTMLHandler {
 
     private fun getThumbnailUrl(body: Element): String {
         val imgTags = body.getElementsByTag("img")
-
-        val images = imgTags.map { it.attr("src") }
-                .filter { url ->
-                    EXTENSIONS.any { url.endsWith(it, ignoreCase = true) }
-                }.take(2)
-
-        return when (images.size) {
-            2 -> images[THUMBNAIL_IMG_INDEX]
-            1 -> images[DEFAULT_IMG_INDEX]
-            else -> ""
-        }
+        val thumbnailUrls = imgTags.map { it.attr("src") }
+        return thumbnailUrlParser.getThumbnailUrl(thumbnailUrls)
     }
 
     private fun getContentSummaryFromText(textContent: String) =

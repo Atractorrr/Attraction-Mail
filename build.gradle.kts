@@ -36,10 +36,9 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 
-    //DB
+    // DB
     implementation ("mysql:mysql-connector-java:8.0.33")
     implementation ("org.mariadb.jdbc:mariadb-java-client:2.7.2")
-
     // aws s3
     implementation ("io.awspring.cloud:spring-cloud-aws-starter-s3:3.1.1")
     // jsoup
@@ -48,6 +47,10 @@ dependencies {
     implementation ("com.google.api-client:google-api-client:2.0.0")
     implementation ("com.google.oauth-client:google-oauth-client-jetty:1.34.1")
     implementation ("com.google.apis:google-api-services-gmail:v1-rev20220404-2.0.0")
+    // webp + image resize
+    implementation("com.sksamuel.scrimage:scrimage-core:4.1.3")
+    implementation("com.sksamuel.scrimage:scrimage-webp:4.1.3")
+
 
     compileOnly("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok")
