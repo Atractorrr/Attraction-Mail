@@ -14,10 +14,15 @@ import java.util.*
 class S3Service(
         @Value("\${aws.s3.bucket}")
         private val bucket: String,
-        @Value("\${file.path}")
+        @Value("\${file.mail-path}")
         private val path: String,
         private val s3Operations: S3Operations
 ) {
+    private companion object {
+        private const val ARTICLE_FOLDER_NAME = "article"
+        private const val THUMBNAIL_FOLDER_NAME = "thumbnail"
+    }
+
     fun initFilePath() {
         val file = File(path)
         if (!file.exists()) {
@@ -31,7 +36,7 @@ class S3Service(
 
     private fun uploadArticle(article: Article): Article {
         val file = createFileFromHTMLContent(article.contentHTML)
-        val upload = uploadFileToS3(file)
+        val upload = uploadFileToS3(file, ARTICLE_FOLDER_NAME)
 
         if (!uploadUrlContainsFileName(upload, file)) {
             throw IllegalArgumentException("파일 이름이 올바르지 않습니다.")
@@ -52,10 +57,10 @@ class S3Service(
         }
     }
 
-    private fun uploadFileToS3(file: File) = s3Operations
+    private fun uploadFileToS3(file: File, folderName: String) = s3Operations
             .upload(
                     bucket,
-                    file.name,
+                    "$folderName/${file.name}",
                     file.inputStream(),
                     ObjectMetadata.builder()
                             .contentType(TEXT_HTML_VALUE)
@@ -63,4 +68,9 @@ class S3Service(
             )
 
     private fun uploadUrlContainsFileName(upload: S3Resource, file: File) = upload.url.toString().contains(file.name)
+
+    fun uploadThumbnailImg(img: File): String {
+        val upload = uploadFileToS3(img, THUMBNAIL_FOLDER_NAME)
+        return upload.filename
+    }
 }

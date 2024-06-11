@@ -2,7 +2,8 @@ package attraction.run.batch
 
 import attraction.run.article.Article
 import attraction.run.gmail.GmailReader
-import attraction.run.html.HTMLHandler
+import attraction.run.gmail.MailNotFoundException
+import attraction.run.html.HTMLService
 import attraction.run.s3.S3Service
 import attraction.run.token.CannotAccessGmailException
 import attraction.run.token.GoogleRefreshToken
@@ -34,11 +35,12 @@ const val CHUNK_SIZE = 100
 @Configuration
 @EnableBatchProcessing(dataSourceRef = "defaultDataSource", transactionManagerRef = "serverTransactionManager")
 @RequiredArgsConstructor
-class BatchConfig(
+class GmailBatchConfig(
         @Qualifier("serverEntityManagerFactory")
         private val entityManagerFactory: EntityManagerFactory,
         private val s3Service: S3Service,
-        private val gmailReader: GmailReader
+        private val gmailReader: GmailReader,
+        private val htmlService: HTMLService
 ) {
     private val log = LoggerFactory.getLogger(this.javaClass)!!
 
@@ -59,6 +61,7 @@ class BatchConfig(
                 .faultTolerant()
                 .skipPolicy(RefreshTokenSkipPolicy())
                 .noRollback(CannotAccessGmailException::class.java)
+                .noRollback(MailNotFoundException::class.java)
                 .build()
     }
 
@@ -73,8 +76,10 @@ class BatchConfig(
                 .queryString("""
                     SELECT g FROM GoogleRefreshToken g 
                     WHERE g.shouldReissueToken = false
+                    AND g.email = :email
                     ORDER BY g.email
                 """.trimIndent())
+                .parameterValues(mapOf("email" to "attraction2312@gmail.com"))
                 .build()
     }
 
@@ -97,7 +102,7 @@ class BatchConfig(
 
     @Bean
     fun mailContentProcessor(): ItemProcessor<List<Article>, List<Article>> {
-        return ItemProcessor<List<Article>, List<Article>>(HTMLHandler::extractArticleFromHtmlContent)
+        return ItemProcessor<List<Article>, List<Article>>(htmlService::extractArticleFromHtmlContent)
     }
 
     @Bean
