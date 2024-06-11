@@ -62,16 +62,6 @@ class MultiDataSourceConfig : DefaultBatchConfiguration() {
         }
     }
 
-//    fun jpaProperties(): Properties {
-//
-//        return Properties().apply {
-//            setProperty("hibernate.dialect", env.getProperty("hibernate.dialect"));
-//        }
-//        properties.setProperty("hibernate.dialect", env.getProperty("hibernate.dialect"));
-//        properties.setProperty("hibernate.show_sql", env.getProperty("hibernate.show_sql"));
-//        properties.setProperty("hibernate.format_sql", env.getProperty("hibernate.format_sql"));
-//    }
-
     @Bean("serverTransactionManager")
     fun jpaTransactionManager(
             @Qualifier("serverEntityManagerFactory") entityManagerFactory: EntityManagerFactory): JpaTransactionManager {
@@ -80,7 +70,6 @@ class MultiDataSourceConfig : DefaultBatchConfiguration() {
             setJpaDialect(HibernateJpaDialect())
         }
     }
-
 
     override fun getTablePrefix(): String {
         return "ATTRACTION_"

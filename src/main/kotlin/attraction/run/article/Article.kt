@@ -8,7 +8,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import kotlin.jvm.Transient
 
-@Table(name = "admin_article")
+@Table(name = "article")
 @Entity
 @EntityListeners(AuditingEntityListener::class)
 class Article(
