@@ -59,7 +59,9 @@ class ThumbnailUrlParser(
                 .scaleToWidth(TARGET_WIDTH)
                 .output(WebpWriter.DEFAULT, File("$path/${UUID.randomUUID()}$WEBP_SUFFIX"))
 
-        return immutableImage.path
+        s3Service.uploadThumbnailImg(immutableImage)
+        immutableImage.delete()
+        return immutableImage.name
     }
 
     private fun getImmutableImage(image: BufferedImage): ImmutableImage =
