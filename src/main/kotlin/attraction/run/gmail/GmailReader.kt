@@ -94,10 +94,11 @@ class GmailReader(
     private fun getMemberMessagesContent(gmailService: Gmail, googleToken: GoogleRefreshToken): List<Article> {
         val messages = getMessages(gmailService, googleToken)
         val messageIds = messages.map { it.id }
-        log.info("사용자: ${googleToken.email} message ids: $messageIds")
+        log.info("사용자: ${googleToken.email} message ids: $messageIds messageSize=${messageIds.size}")
 
         return messages.mapNotNull { message ->
             val messageDetails = gmailService.users().messages().get("me", message.id).setFormat("full").execute()
+            log.info("mimetype=${messageDetails.payload.mimeType} message=${message.id}")
             if (!messageDetails.payload.mimeType.startsWith(TEXT_HTML_VALUE)) {
                 return@mapNotNull null
             }
