@@ -19,7 +19,7 @@ class ThumbnailUrlParser(
 ) {
     private companion object {
         private val EXTENSIONS = listOf(".jpg", ".jpeg", ".png")
-        private val IMAGE_ASPECT_RATIO_RANGE = 30.00..100.00
+        private val IMAGE_ASPECT_RATIO_RANGE = 30.00..120.00
         private const val TARGET_WIDTH = 720
         private const val WEBP_SUFFIX = ".webp"
     }
@@ -30,6 +30,7 @@ class ThumbnailUrlParser(
         initFilePath()
         val bufferImages = getBufferImages(thumbnailUrls)
         val images = bufferImages.filter(::imageRule).take(2)
+        log.info("size = ${images.size}")
         return when (images.size) {
             1 -> imageResizeAndConvertWebp(images[0])
             2 -> imageResizeAndConvertWebp(images[1])
@@ -46,7 +47,10 @@ class ThumbnailUrlParser(
 
     private fun getBufferImages(thumbnailUrls: List<String>): List<ThumbnailImg> {
         return thumbnailUrls.filter { url ->
-            EXTENSIONS.any { url.endsWith(it, ignoreCase = true) }
+            EXTENSIONS.any {
+                val lastIndexOf = url.lastIndexOf(it, ignoreCase = true)
+                lastIndexOf != -1
+            }
         }.map {
             log.info("image url = $it")
             ThumbnailImg(ImageIO.read(URI(it).toURL()))
