@@ -76,10 +76,14 @@ class GmailBatchConfig(
                 .queryString("""
                     SELECT g FROM GoogleRefreshToken g 
                     WHERE g.shouldReissueToken = false
-                    AND g.email = :email
+                    AND g.email in :emails
                     ORDER BY g.email
                 """.trimIndent())
-                .parameterValues(mapOf("email" to "attraction2312@gmail.com"))
+                .parameterValues(mapOf("emails" to listOf("" +
+                        "attraction.subscribe@gmail.com",
+                        "attraction.subscribe2@gmail.com",
+                        "attraction.subscribe3@gmail.com"
+                    )))
                 .build()
     }
 

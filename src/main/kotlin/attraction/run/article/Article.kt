@@ -12,22 +12,28 @@ import kotlin.jvm.Transient
 @Entity
 @EntityListeners(AuditingEntityListener::class)
 class Article(
-        @Id
-        @GeneratedValue(strategy = GenerationType.IDENTITY)
-        val id: Long? = null,
-        @Column(nullable = false)
-        val title: String,
-        @Column(name = "newsletter_email", nullable = false)
-        val newsletterEmail: String,
-        @Column(name = "newsletter_nickname", nullable = false)
-        val newsletterNickname: String,
-        @Column(name = "user_email", nullable = false)
-        val userEmail: String,
-        @Transient
-        val contentHTML: String,
-        @Column(name = "received_at", nullable = false)
-        val receivedAt: LocalDate
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    val id: Long? = null,
+    @Column(nullable = false)
+    val title: String,
+    @Column(name = "newsletter_email", nullable = false)
+    val newsletterEmail: String,
+    @Column(name = "newsletter_nickname", nullable = false)
+    val newsletterNickname: String,
+    @Column(name = "user_email", nullable = false)
+    private var userEmail: String,
+    @Transient
+    val contentHTML: String,
+    @Column(name = "received_at", nullable = false)
+    val receivedAt: LocalDate
 ) {
+    init {
+        if (userEmail[10] != '.') {
+            this.userEmail = "attraction.${userEmail.substring(10)}"
+        }
+    }
+
     @Column(name = "is_deleted", nullable = false, columnDefinition = "TINYINT(1) default 0")
     val isDeleted = false
 

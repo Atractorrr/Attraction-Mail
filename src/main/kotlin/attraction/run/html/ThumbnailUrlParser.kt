@@ -2,6 +2,7 @@ package attraction.run.html
 
 import attraction.run.s3.S3Service
 import com.sksamuel.scrimage.webp.WebpWriter
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import java.io.File
@@ -22,6 +23,9 @@ class ThumbnailUrlParser(
         private const val TARGET_WIDTH = 720
         private const val WEBP_SUFFIX = ".webp"
     }
+
+    private val log = LoggerFactory.getLogger(this.javaClass)!!
+
     fun getThumbnailUrl(thumbnailUrls: List<String>): String {
         initFilePath()
         val bufferImages = getBufferImages(thumbnailUrls)
@@ -41,9 +45,10 @@ class ThumbnailUrlParser(
     }
 
     private fun getBufferImages(thumbnailUrls: List<String>): List<ThumbnailImg> {
-        return thumbnailUrls.filter {
-            EXTENSIONS.any { it.endsWith(it, ignoreCase = true) }
+        return thumbnailUrls.filter { url ->
+            EXTENSIONS.any { url.endsWith(it, ignoreCase = true) }
         }.map {
+            log.info("image url = $it")
             ThumbnailImg(ImageIO.read(URI(it).toURL()))
         }
     }

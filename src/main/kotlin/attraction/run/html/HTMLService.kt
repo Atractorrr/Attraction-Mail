@@ -19,8 +19,11 @@ class HTMLService(private val thumbnailUrlParser: ThumbnailUrlParser) {
 
             article.apply {
                 this.thumbnailUrl = getThumbnailUrl(elements)
+                println("thumbnailUrl = $thumbnailUrl")
                 this.contentSummary = getContentSummaryFromText(textContent)
+                println("contentSummary = $contentSummary")
                 this.readingTime = calculateReadingTimeFromText(textContent)
+                println("readingTime = $readingTime")
             }
         }
     }
@@ -39,7 +42,10 @@ class HTMLService(private val thumbnailUrlParser: ThumbnailUrlParser) {
         val startPoint = fullText.indexOf(sentenceDelimiter) + sentenceDelimiter.length
         val summaryEndPoint = MAX_CONTENT_LENGTH + startPoint + sentenceDelimiter.length - sentenceDelimiter.length
 
-        return fullText.substring(startPoint until summaryEndPoint).trim()
+        println("summaryEndPoint = $summaryEndPoint")
+        return fullText.substring(startPoint until
+                if (fullText.length < summaryEndPoint) fullText.length else summaryEndPoint
+        ).trim()
     }
 
     // 사람은 1분에 약 150 ~ 200단어를 읽을 수 있다. (불용어 제외X)
