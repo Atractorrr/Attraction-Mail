@@ -122,6 +122,7 @@ class GmailReader(
     private fun createArticle(messageDetails: Message): Article {
         val associate = messageDetails.payload.headers
             .associate { it.name to it.value }
+
         val contentHTML = when (messageDetails.payload.mimeType) {
             "text/html" -> {
                 val data = messageDetails.payload.body.data
@@ -131,7 +132,11 @@ class GmailReader(
                 val builder = StringBuilder()
                 for (part in messageDetails.payload.parts) {
                     val decodingData = String(Base64.decodeBase64(part.body.data), StandardCharsets.UTF_8)
-                    builder.append(decodingData)
+
+                    log.info("제목 = ${associate["Subject"]} decodingData = $decodingData")
+                    if (decodingData.endsWith("</html>")) {
+                        builder.append(decodingData)
+                    }
                 }
                 builder.toString()
             }
