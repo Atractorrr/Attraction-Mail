@@ -131,10 +131,10 @@ class GmailReader(
             "multipart/alternative" -> {
                 val builder = StringBuilder()
                 for (part in messageDetails.payload.parts) {
-                    val decodingData = String(Base64.decodeBase64(part.body.data), StandardCharsets.UTF_8)
+                    val decodingData = String(Base64.decodeBase64(part.body.data), StandardCharsets.UTF_8).trim()
 
                     log.info("제목 = ${associate["Subject"]} decodingData = $decodingData")
-                    if (decodingData.endsWith("</html>")) {
+                    if (decodingData.endsWith("</html>", ignoreCase = true)) {
                         builder.append(decodingData)
                     }
                 }

@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import java.io.File
 import java.net.URI
+import java.net.URISyntaxException
 import java.util.*
 import javax.imageio.ImageIO
 
@@ -18,7 +19,6 @@ class ThumbnailUrlParser(
         private val s3Service: S3Service
 ) {
     private companion object {
-        private val EXTENSIONS = listOf(".jpg", ".jpeg", ".png")
         private val IMAGE_ASPECT_RATIO_RANGE = 30.00..120.00
         private const val TARGET_WIDTH = 720
         private const val WEBP_SUFFIX = ".webp"
@@ -46,14 +46,17 @@ class ThumbnailUrlParser(
     }
 
     private fun getBufferImages(thumbnailUrls: List<String>): List<ThumbnailImg> {
-        return thumbnailUrls.filter { url ->
-            EXTENSIONS.any {
-                val lastIndexOf = url.lastIndexOf(it, ignoreCase = true)
-                lastIndexOf != -1
-            }
-        }.map {
+        return thumbnailUrls.mapNotNull {
             log.info("image url = $it")
-            ThumbnailImg(ImageIO.read(URI(it).toURL()))
+            try {
+                ThumbnailImg(ImageIO.read(URI(it).toURL()))
+            } catch (e1: RuntimeException) {
+                log.error(e1.message)
+                null
+            } catch (e2: URISyntaxException) {
+                log.error(e2.message)
+                null
+            }
         }
     }
 
