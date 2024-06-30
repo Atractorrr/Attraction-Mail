@@ -6,8 +6,8 @@ import org.springframework.data.jpa.repository.config.EnableJpaAuditing
 
 @EnableJpaAuditing
 @SpringBootApplication
-class MailServiceApplication
+class MailServiceBatchApplication
 
 fun main(args: Array<String>) {
-    runApplication<MailServiceApplication>(*args)
+    runApplication<MailServiceBatchApplication>(*args)
 }

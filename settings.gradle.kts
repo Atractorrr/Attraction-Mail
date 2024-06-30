@@ -1,1 +1,1 @@
-rootProject.name = "mail-service"
+rootProject.name = "mail-service-batch"

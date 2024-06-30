@@ -30,7 +30,7 @@ import java.util.*
 
 @Component
 class GmailReader(
-        private val userMarkService: GoogleTokenMarkService
+    private val userMarkService: GoogleTokenMarkService
 ) {
     private val log = LoggerFactory.getLogger(this.javaClass)!!
 
@@ -38,7 +38,7 @@ class GmailReader(
         private const val APPLICATION_NAME = "attraction"
         private val JSON_FACTORY: JsonFactory = GsonFactory.getDefaultInstance()
         private const val CREDENTIALS_FILE_PATH = "/credentials.json"
-        private val EMAIL_REGEX = "<(.*?)>".toRegex()
+        private val EMAIL_REGEX = "(?<=<|^)([\\w._%+-]+@[\\w.-]+\\.[a-zA-Z]{2,})(?=>|$)".toRegex()
     }
 
     fun getMemberInboxArticle(googleToken: GoogleRefreshToken): List<Article> {
@@ -73,22 +73,22 @@ class GmailReader(
     }
 
     private fun getGoogleTokenResponse(
-            httpTransport: NetHttpTransport,
-            refreshToken: String,
-            details: GoogleClientSecrets.Details
+        httpTransport: NetHttpTransport,
+        refreshToken: String,
+        details: GoogleClientSecrets.Details
     ): GoogleTokenResponse = GoogleRefreshTokenRequest(
-            httpTransport,
-            JSON_FACTORY,
-            refreshToken,
-            details.clientId,
-            details.clientSecret
+        httpTransport,
+        JSON_FACTORY,
+        refreshToken,
+        details.clientId,
+        details.clientSecret
     ).execute()
 
 
     private fun getGmailService(httpTransport: NetHttpTransport, credential: Credential): Gmail {
         return Gmail.Builder(httpTransport, JSON_FACTORY, credential)
-                .setApplicationName(APPLICATION_NAME)
-                .build()
+            .setApplicationName(APPLICATION_NAME)
+            .build()
     }
 
     private fun getMemberMessagesContent(gmailService: Gmail, googleToken: GoogleRefreshToken): List<Article> {
@@ -99,12 +99,13 @@ class GmailReader(
         return messages.mapNotNull { message ->
             val messageDetails = gmailService.users().messages().get("me", message.id).setFormat("full").execute()
             log.info("mimetype=${messageDetails.payload.mimeType} message=${message.id}")
-            if (!messageDetails.payload.mimeType.startsWith(TEXT_HTML_VALUE)) {
+            val mimeType = messageDetails.payload.mimeType
+            if (!(mimeType.startsWith(TEXT_HTML_VALUE) || mimeType.startsWith("multipart/alternative"))) {
                 return@mapNotNull null
             }
 
             createArticle(messageDetails).takeIf { it.isSameUserEmail(googleToken.email) }
-                    ?: throw IllegalArgumentException("사용자 이메일 정보가 올바르지 않습니다.")
+                ?: throw IllegalArgumentException("사용자 이메일 정보가 올바르지 않습니다.")
         }.also {
             removeUnReadLabel(messageIds, gmailService)
             if (it.isEmpty()) throw throw MailNotFoundException("${googleToken.email} 사용자의 메일이 존재하지 않습니다.")
@@ -113,37 +114,60 @@ class GmailReader(
 
     private fun getMessages(gmailService: Gmail, googleToken: GoogleRefreshToken): MutableList<Message> {
         return gmailService.users().messages().list("me")
-                .setQ("label:attraction is:unread")
-                .execute()
-                .messages ?: throw MailNotFoundException("${googleToken.email} 사용자의 메일이 존재하지 않습니다.")
+            .setQ("label:attraction is:unread")
+            .execute()
+            .messages ?: throw MailNotFoundException("${googleToken.email} 사용자의 메일이 존재하지 않습니다.")
     }
 
     private fun createArticle(messageDetails: Message): Article {
         val associate = messageDetails.payload.headers
-                .associate { it.name to it.value }
+            .associate { it.name to it.value }
 
-        val data = messageDetails.payload.body.data
-        val contentHTML = String(Base64.decodeBase64(data), StandardCharsets.UTF_8)
+        val contentHTML = when (messageDetails.payload.mimeType) {
+            "text/html" -> {
+                val data = messageDetails.payload.body.data
+                String(Base64.decodeBase64(data), StandardCharsets.UTF_8)
+            }
+            "multipart/alternative" -> {
+                val builder = StringBuilder()
+                for (part in messageDetails.payload.parts) {
+                    val decodingData = String(Base64.decodeBase64(part.body.data), StandardCharsets.UTF_8).trim()
+
+                    log.info("제목 = ${associate["Subject"]} decodingData = $decodingData")
+                    if (decodingData.endsWith("</html>", ignoreCase = true)) {
+                        builder.append(decodingData)
+                    }
+                }
+                builder.toString()
+            }
+            else -> throw IllegalArgumentException("content가 이상합니다.")
+        }
 
         val newsletter = Newsletter(requireNotNull(associate["From"]) { "뉴스레터 정보가 존재하지 않습니다." })
+        log.info("userEmail = ${associate["To"]}")
         return Article(
-                title = requireNotNull(associate["Subject"]) { "제목이 존재하지 않습니다." },
-                newsletterEmail = newsletter.email,
-                newsletterNickname = newsletter.nickname,
-                userEmail = requireNotNull(associate["To"]?.extractEmailFromString()) { "사용자 이메일 형식이 올바르지 않습니다." },
-                contentHTML = contentHTML,
-                receivedAt = requireNotNull(associate["Date"]?.toLocalDateFromMailSendDate()) { "전송한 날짜가 올바르지 않습니다." }
+            title = requireNotNull(associate["Subject"])
+            { "제목이 존재하지 않습니다." },
+            newsletterEmail = newsletter.email,
+            newsletterNickname = newsletter.nickname,
+            userEmail = requireNotNull(associate["To"]?.extractEmailFromString())
+            { "사용자 이메일 형식이 올바르지 않습니다." },
+            contentHTML = contentHTML,
+            receivedAt = requireNotNull(associate["Date"]?.toLocalDateFromMailSendDate())
+            { "전송한 날짜가 올바르지 않습니다." }
         )
     }
 
     private fun String.extractEmailFromString(): String {
         val matchResult = EMAIL_REGEX.find(this)
+        log.info("matchResult = ${matchResult?.groupValues?.get(1)}")
         return matchResult?.groupValues?.get(1) ?: throw IllegalArgumentException("메일의 이메일이 형식이 올바르지 않습니다.")
     }
 
     private fun String.toLocalDateFromMailSendDate(): LocalDate {
+        val cleanedString = this.substringBefore(" (UTC)")
         val formatter = DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss Z", Locale.ENGLISH)
-        val zonedDateTime = ZonedDateTime.parse(this, formatter)
+        val zonedDateTime = ZonedDateTime.parse(cleanedString, formatter)
         return zonedDateTime.toLocalDate()
     }
 

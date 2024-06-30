@@ -10,14 +10,16 @@ data class Newsletter(private val from: String) {
     val email: String
 
     init {
-        val split = from.trim().split(" ")
+        val lastIndexOf = from.lastIndexOf("<")
+        val fromNickname = from.substring(0, lastIndexOf - 1).trim()
+        val fromEmail = from.substring(lastIndexOf + 1, from.length - 1)
 
-        val fromNickname = split[0]
-        if (fromNickname.startsWith("\"") && fromNickname.endsWith("\"")) {
-            nickname = fromNickname.substring(1, fromNickname.length - 1)
-        } else nickname = fromNickname
-
-        val fromEmail = split[1]
-        email = fromEmail.substring(1, fromEmail.length - 1)
+        nickname = if (fromNickname[0] == '"') {
+            fromNickname.substring(1, fromNickname.length - 1)
+        } else {
+            fromNickname
+        }
+        email = fromEmail.trim()
+        log.info("nickname=$nickname email=$email")
     }
 }
