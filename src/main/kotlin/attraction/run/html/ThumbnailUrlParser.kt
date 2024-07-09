@@ -19,7 +19,7 @@ class ThumbnailUrlParser(
         private val s3Service: S3Service
 ) {
     private companion object {
-        private val IMAGE_ASPECT_RATIO_RANGE = 30.00..120.00
+        private val IMAGE_ASPECT_RATIO_RANGE = 30.00..150.00
         private const val TARGET_WIDTH = 720
         private const val WEBP_SUFFIX = ".webp"
     }

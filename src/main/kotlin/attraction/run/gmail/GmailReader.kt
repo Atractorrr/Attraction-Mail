@@ -27,6 +27,7 @@ import java.time.LocalDate
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.*
+import java.util.stream.Stream
 
 @Component
 class GmailReader(
@@ -52,6 +53,7 @@ class GmailReader(
                 accessToken = it.accessToken
             }
         }.onFailure {
+            log.error("email=${googleToken.email} message=${it.message}")
             userMarkService.markTokenForReissue(googleToken.email)
         }
 
@@ -165,9 +167,16 @@ class GmailReader(
     }
 
     private fun String.toLocalDateFromMailSendDate(): LocalDate {
-        val cleanedString = this.substringBefore(" (UTC)")
-        val formatter = DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss Z", Locale.ENGLISH)
-        val zonedDateTime = ZonedDateTime.parse(cleanedString, formatter)
+        log.info("메일 전송 날짜 파싱전: $this")
+        val correctedString = this.split(" ")
+            .filterNot { it.isBlank() || it == "(UTC)" }.joinToString(separator = " ") {
+                if (it == "GMT") "+0000" else it
+            }
+        log.info("메일 전송 날짜: $correctedString")
+
+        val formatter = DateTimeFormatter.ofPattern("EEE, d MMM yyyy HH:mm:ss Z", Locale.ENGLISH)
+        val zonedDateTime = ZonedDateTime.parse(correctedString, formatter)
+
         return zonedDateTime.toLocalDate()
     }
 
